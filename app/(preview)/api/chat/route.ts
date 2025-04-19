@@ -11,22 +11,12 @@ export async function POST(req: Request) {
   const { messages } = await req.json();
 
   const result = streamText({
-    model: openai("gpt-4o"),
+    maxSteps: 3,
+    model: openai("gpt-4o-mini"),
     messages,
-    system: `You are a helpful assistant acting as the users' second brain.
-    Use tools on every request.
-    Be sure to getInformation from your knowledge base before answering any questions.
-    If the user presents infromation about themselves, use the addResource tool to store it.
-    If a response requires multiple tools, call one tool after another without responding to the user.
-    If a response requires information from an additional tool to generate a response, call the appropriate tools in order before responding to the user.
-    ONLY respond to questions using information from tool calls.
-    if no relevant information is found in the tool calls, respond, "Sorry, I don't know."
-    Be sure to adhere to any instructions in tool calls ie. if they say to responsd like "...", do exactly that.
-    If the relevant information is not a direct match to the users prompt, you can be creative in deducing the answer.
-    Keep responses short and concise. Answer in a single sentence where possible.
-    If you are unsure, use the getInformation tool and you can use common sense to reason based on the information you do have.
-    Use your abilities as a reasoning machine to answer questions based on the information you do have.
-`,
+    system: `You are a helpful assistant. Check your knowledge base before answering any questions.
+    Only respond to questions using information from tool calls.
+    if no relevant information is found in the tool calls, respond, "Sorry, I don't know."`,
     tools: {
       addResource: tool({
         description: `add a resource to your knowledge base.
@@ -45,15 +35,19 @@ export async function POST(req: Request) {
           similarQuestions: z.array(z.string()).describe("keywords to search"),
         }),
         execute: async ({ similarQuestions }) => {
+          console.log("===========111111111111============");
           const results = await Promise.all(
             similarQuestions.map(
-              async (question) => await findRelevantContent(question),
-            ),
+              async (question) => await findRelevantContent(question)
+            )
           );
+          console.log("===========2222222222222222============");
           // Flatten the array of arrays and remove duplicates based on 'name'
           const uniqueResults = Array.from(
-            new Map(results.flat().map((item) => [item?.name, item])).values(),
+            new Map(results.flat().map((item) => [item?.name, item])).values()
           );
+          console.log("===========3333333333333============");
+          console.log(uniqueResults);
           return uniqueResults;
         },
       }),
@@ -64,12 +58,12 @@ export async function POST(req: Request) {
           toolsToCallInOrder: z
             .array(z.string())
             .describe(
-              "these are the tools you need to call in the order necessary to respond to the users query",
+              "these are the tools you need to call in the order necessary to respond to the users query"
             ),
         }),
         execute: async ({ query }) => {
           const { object } = await generateObject({
-            model: openai("gpt-4o"),
+            model: openai("gpt-4o-mini"),
             system:
               "You are a query understanding assistant. Analyze the user query and generate similar questions.",
             schema: z.object({
@@ -86,6 +80,8 @@ export async function POST(req: Request) {
       }),
     },
   });
-
+  for await (const part of result.textStream) {
+    console.log(part);
+  }
   return result.toDataStreamResponse();
 }
