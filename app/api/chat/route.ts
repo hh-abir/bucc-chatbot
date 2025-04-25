@@ -14,9 +14,7 @@ export async function POST(req: Request) {
     maxSteps: 3,
     model: openai("gpt-4o-mini"),
     messages,
-    system: `You are a helpful assistant. Check your knowledge base before answering any questions.
-    Only respond to questions using information from tool calls.
-    if no relevant information is found in the tool calls, respond, "Sorry, I don't know."`,
+    system: ``,
     tools: {
       addResource: tool({
         description: `add a resource to your knowledge base.
